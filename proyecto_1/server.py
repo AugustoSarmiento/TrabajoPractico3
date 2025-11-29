@@ -1,5 +1,5 @@
 from modules.factoria import crear_repositorio_usuarios, crear_repositorio_reclamos
-from modules.sistema import SistemaGestionReclamos
+from modules.sistema import SubsistemaGestionReclamos
 from modules.inicializacion import DATOS_PERSONAL # Datos para inicializar personal
 from modules.roles import JefeDepartamento, SecretarioTecnico # Clases específicas
 from modules.excepciones import UsuarioExistenteError # Para manejar errores al inicializar
@@ -17,7 +17,7 @@ import os
 
 repo_usuarios = crear_repositorio_usuarios()
 repo_reclamos = crear_repositorio_reclamos()
-sistema = SistemaGestionReclamos(repo_usuarios, repo_reclamos)
+sistema = SubsistemaGestionReclamos(repo_usuarios, repo_reclamos)
 
 print("Creando gestor de login...")
 gestor_login = GestorDeLogin(login_manager, repo_usuarios)

@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import MagicMock, patch
-from modules.sistema import SistemaGestionReclamos
+from modules.sistema import SubsistemaGestionReclamos
 from modules.usuario import Usuario
 from modules.reclamo import Reclamo
 from modules.roles import JefeDepartamento, SecretarioTecnico
@@ -36,7 +36,7 @@ reclamo_soporte._Reclamo__estado = "pendiente"
 reclamo_maestranza = Reclamo(usuario_final, "Baño sucio", "maestranza")
 reclamo_maestranza.id_reclamo = 2
 
-class TestSistemaGestionReclamos(unittest.TestCase):
+class TestSubsistemaGestionReclamos(unittest.TestCase):
     def setUp(self):
         self.repo_usuarios = MockRepo()
         self.repo_reclamos = MockRepo()
@@ -48,7 +48,7 @@ class TestSistemaGestionReclamos(unittest.TestCase):
         self.mock_clasificador = MockClasificadorReclamo.return_value
         self.mock_clasificador.clasificar.return_value = "soporte informático"
         
-        self.sistema = SistemaGestionReclamos(self.repo_usuarios, self.repo_reclamos)
+        self.sistema = SubsistemaGestionReclamos(self.repo_usuarios, self.repo_reclamos)
         
     #Pruebas para la Gestión de Usuarios 
 
@@ -159,19 +159,19 @@ class TestSistemaGestionReclamos(unittest.TestCase):
 
     #Pruebas para la Gestión de Reclamos: Cambio de Estado
 
-    @patch.object(SistemaGestionReclamos, 'buscar_reclamo_por_id', return_value=reclamo_soporte)
+    @patch.object(SubsistemaGestionReclamos, 'buscar_reclamo_por_id', return_value=reclamo_soporte)
     def test_cambiar_estado_permiso_denegado(self, mock_buscar):
         """Prueba el error de permiso si el departamento no coincide."""
         with self.assertRaisesRegex(Exception, "Permiso denegado"): #Se prueba que se levanta el error correspondiente
             self.sistema.cambiar_estado_reclamo(jefe_maestranza, 1, "resuelto") #Jefe maestranza no puede cambiar el estado de reclamos de soporte técnico
 
-    @patch.object(SistemaGestionReclamos, 'buscar_reclamo_por_id', return_value=reclamo_soporte)
+    @patch.object(SubsistemaGestionReclamos, 'buscar_reclamo_por_id', return_value=reclamo_soporte)
     def test_cambiar_estado_dias_invalidos(self, mock_buscar):
         """Prueba la excepción al pasar días inválidos."""
         with self.assertRaisesRegex(ValueError, "Se debe asignar un tiempo"): #Se debe levantar el error correspondiente
             self.sistema.cambiar_estado_reclamo(jefe_soporte, 1, "en proceso", 0) #Notar que el tiempo debe ser mayor a 0 y menor a 16 (linea 72, reclamo.py)
 
-    @patch.object(SistemaGestionReclamos, 'buscar_reclamo_por_id', return_value=reclamo_soporte)
+    @patch.object(SubsistemaGestionReclamos, 'buscar_reclamo_por_id', return_value=reclamo_soporte)
     def test_cambiar_estado_exitoso(self, mock_buscar):
         """Prueba el flujo de cambio de estado y actualización."""
         self.sistema.cambiar_estado_reclamo(jefe_soporte, 1, "en proceso", 5) #Cambio válido
@@ -234,13 +234,13 @@ class TestSistemaGestionReclamos(unittest.TestCase):
         with self.assertRaisesRegex(Exception, "Solo el Secretario Técnico puede derivar"): 
             self.sistema.derivar_reclamo(jefe_soporte, 1, "maestranza")
 
-    @patch.object(SistemaGestionReclamos, 'buscar_reclamo_por_id', return_value=reclamo_soporte)
+    @patch.object(SubsistemaGestionReclamos, 'buscar_reclamo_por_id', return_value=reclamo_soporte)
     def test_derivar_reclamo_departamento_invalido(self, mock_buscar):
         """Prueba el error si el departamento de destino no es válido."""
         with self.assertRaisesRegex(ValueError, "no es un destino válido"): #Se verifica que devuelva ValueError cuando el departamento no es correcto
             self.sistema.derivar_reclamo(secretario, 1, "otro departamento") 
 
-    @patch.object(SistemaGestionReclamos, 'buscar_reclamo_por_id', return_value=reclamo_soporte)
+    @patch.object(SubsistemaGestionReclamos, 'buscar_reclamo_por_id', return_value=reclamo_soporte)
     def test_derivar_reclamo_exitoso(self, mock_buscar): 
         """Prueba la derivación exitosa y la actualización."""
         self.sistema.derivar_reclamo(secretario, 1, "maestranza") #Se deriva el reclamo

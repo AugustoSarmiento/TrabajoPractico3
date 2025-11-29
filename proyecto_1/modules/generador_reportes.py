@@ -1,7 +1,3 @@
-# modules/generador_reportes.py
-
-# --- 1. IMPORTACIONES ---
-# Importamos las clases abstractas
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any
 import os

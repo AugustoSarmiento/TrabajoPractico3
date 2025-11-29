@@ -1,7 +1,7 @@
 from modules.factoria import crear_repositorio_usuarios, crear_repositorio_reclamos
 from modules.usuario import Usuario
 from modules.roles import JefeDepartamento, SecretarioTecnico
-from modules.sistema import SistemaGestionReclamos # Para crear reclamos
+from modules.sistema import SubsistemaGestionReclamos # Para crear reclamos
 
 # Importamos los datos de los archivos
 from modules.inicializacion import DATOS_PERSONAL
@@ -20,7 +20,7 @@ def inicializar_base_de_datos():
     
     # Creamos una instancia del sistema para usar la lógica de 'crear_reclamo'
     # (que incluye la clasificación automática)
-    sistema = SistemaGestionReclamos(repo_usuarios, repo_reclamos)
+    sistema = SubsistemaGestionReclamos(repo_usuarios, repo_reclamos)
 
     # 2. Crear Personal (Jefes y Secretarios)
     print("\n[PASO 1/3] Creando personal (Jefes y Secretarios)...")

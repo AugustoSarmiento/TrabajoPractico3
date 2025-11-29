@@ -49,7 +49,7 @@
         <mxCell id="Dg50mGmTqX6g-AOMRCKA-20" value="-__init__()&lt;div&gt;+agregar_adherentes()&lt;/div&gt;&lt;div&gt;+cambiar_estado()&lt;/div&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="Dg50mGmTqX6g-AOMRCKA-17">
           <mxGeometry y="168" width="220" height="62" as="geometry" />
         </mxCell>
-        <mxCell id="Dg50mGmTqX6g-AOMRCKA-21" value="SubsistemaGestionReclamos" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+        <mxCell id="Dg50mGmTqX6g-AOMRCKA-21" value="SubSubsistemaGestionReclamos" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
           <mxGeometry x="-530" y="804" width="450" height="380" as="geometry" />
         </mxCell>
         <mxCell id="Dg50mGmTqX6g-AOMRCKA-22" value="-repo_usuarios: RepositorioUsuariosSQLAlchemy&lt;div&gt;-repo_reclamos: RepositorioReclamosSQLAlchemy&lt;/div&gt;&lt;div&gt;-Clasificador: ClasificadorReclamo&lt;/div&gt;" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="Dg50mGmTqX6g-AOMRCKA-21">

@@ -142,6 +142,7 @@ class RepositorioUsuariosSQLAlchemy(RepositorioAbstracto):
         self.__session.commit()
 
     def obtener_por_filtro(self, **kwargs) -> Optional[Usuario]:
+        #kwarg permite pasar una cantidad de argumentos con nombre, nos permite mayor flexibilidad.
         # El filtro se aplica directamente al query del modelo
         modelo = self.__session.query(ModeloUsuario).filter_by(**kwargs).first()
         return self.__map_modelo_a_entidad(modelo) if modelo else None

@@ -2,8 +2,8 @@ from abc import ABC, abstractmethod
 
 class MonticuloBinario(ABC):
     def __init__(self):
-        self.__lista_monticulo = [0]
-        self.__tamano_actual = 0
+        self.__lista_monticulo = [0] #Para que la raíz sea el índice 1no 
+        self.__tamano_actual = 0  #Se podría usar lista_monticulo.ñen() - 1 pero implica hacer un getter
 
     @abstractmethod
     def _comparar(self, a, b) -> bool:

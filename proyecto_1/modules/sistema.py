@@ -8,15 +8,14 @@ from modules.modelos_db import ModeloUsuario, ModeloReclamo # Necesario para fil
 from typing import Optional, List # Mantenemos Optional y List
 from modules.clasificador_reclamos import ClasificadorReclamo
 
- #TODO: Actualizar nombre de la clase
-class SistemaGestionReclamos:
+class SubsistemaGestionReclamos:
     def __init__(self, repo_usuarios: RepositorioAbstracto, repo_reclamos: RepositorioAbstracto):
         """
         Constructor que recibe los repositorios para usuarios y reclamos.
         """
         self.__repo_usuarios = repo_usuarios
         self.__repo_reclamos = repo_reclamos
-        self.__clasificador = ClasificadorReclamo()
+        self.__clasificador = ClasificadorReclamo() #Relación de composición
         
 
     # --- Métodos de gestión de Usuarios ---
@@ -26,7 +25,7 @@ class SistemaGestionReclamos:
         Registra un nuevo usuario final usando el repositorio.
         Lanza ValueError si el email o nombre de usuario ya existen (manejado por el repo).
         """
-        # Creamos la entidad Usuario (sin ID de BD)
+        # Creamos la entidad Usuario (sin ID de BD porque es responsabilidad de la base de datos y queremos mantener abstracción)
         nuevo_usuario = Usuario(nombre, apellido, email, nombre_usuario, claustro, contrasena)
         try:
             # El repositorio se encarga de la validación de unicidad y de guardar
@@ -45,9 +44,9 @@ class SistemaGestionReclamos:
         if not usuario_encontrado:
             raise UsuarioInexistenteError("El usuario especificado no existe.")
         return usuario_encontrado
-    # --- Métodos de gestión de Reclamos ---
 
-    # modules/sistema.py
+ # --- Métodos de gestión de Reclamos ---
+
     def crear_reclamo(self, usuario_creador: Usuario, contenido: str) -> Reclamo:
         """
         Crea un nuevo reclamo. El departamento se asigna automáticamente
@@ -121,11 +120,11 @@ class SistemaGestionReclamos:
         if reclamo_a_modificar.departamento != jefe_departamento.departamento_asignado:
             raise Exception("Permiso denegado: no puede modificar reclamos de otro departamento.")
 
-        # Cambiamos el estado en el objeto de dominio
+        # Cambiamos el estado en el objeto
         try:
             reclamo_a_modificar.cambiar_estado(nuevo_estado, dias_resolucion)
         except ValueError as e:
-             # Si cambiar_estado lanza error (ej. días inválidos), lo relanzamos
+             # Si cambiar_estado lanza error, lo relanzamos
              raise ValueError(str(e))
 
         # Actualizamos el reclamo en la base de datos usando el repositorio
@@ -143,8 +142,8 @@ class SistemaGestionReclamos:
 
         # Necesitamos el ID del ModeloUsuario para filtrar en ModeloReclamo
         # Asumimos que el repositorio de usuarios nos puede dar el modelo o el ID
-        # HACK: Buscamos el modelo directamente aquí para obtener el ID de BD.
-        # Una mejor solución sería que el objeto Usuario tuviera su ID de BD.
+        
+        
         modelo_usuario = self.__repo_usuarios._RepositorioUsuariosSQLAlchemy__session.query(ModeloUsuario).filter_by(nombre_usuario=usuario_existente.nombre_usuario).first()
         if not modelo_usuario:
              raise Exception("Inconsistencia: Usuario existe como entidad pero no como modelo.")
@@ -177,18 +176,6 @@ class SistemaGestionReclamos:
         )
         return reclamos_encontrados 
 
-        # 1. Clasificar el texto para saber qué buscar
-        clasificacion = self.__clasificador.clasificar(contenido_reclamo)
-        if clasificacion == "indefinido":
-            return [] # Si no se puede clasificar, no hay similares
-
-        # 2. Buscar en la BD reclamos pendientes CON ESA CLASIFICACIÓN
-        #    (Asumiendo que 'departamento' es donde guardamos la clasificación)
-        reclamos_similares = self.__repo_reclamos.obtener_todos_por_filtro(
-            estado="pendiente",
-            departamento=clasificacion
-        )
-        return reclamos_similares
      
     def derivar_reclamo(self, usuario_secretario: Usuario, id_reclamo: int, nuevo_departamento: str):
         """

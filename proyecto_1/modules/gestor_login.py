@@ -53,8 +53,7 @@ class GestorDeLogin:
             except ValueError:
                 return None # Si el ID no es un número, es inválido
 
-            # ¡Quitamos el try/except genérico de aquí!
-            # Ahora, si 'obtener_por_id' falla, veremos el error real.
+            
             entidad = self.__repo_usuarios.obtener_por_id(id_usuario_int)
             
             if entidad:

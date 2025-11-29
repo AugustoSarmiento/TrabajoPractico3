@@ -7,7 +7,7 @@ class Reclamo:
 
     def __init__(self, usuario_creador: Usuario, contenido: str, departamento: str):
         self.__id_reclamo: int | None = None # El ID se asignará después de guardarlo 
-        self.__usuario_creador: Usuario = usuario_creador # Relación de Asociación/Composición
+        self.__usuario_creador: Usuario = usuario_creador # Relación de Agregación.
         self.__contenido: str = contenido
         self.__departamento: str = departamento
         self.__timestamp: datetime.datetime = datetime.datetime.now()
