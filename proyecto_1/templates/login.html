@@ -7,7 +7,17 @@
             <h2>Iniciar Sesión</h2>
             <hr>
             
-            {{ wtf.quick_form(form, novalidate=True, button_map={'submit': 'primary'}) }}
+            <form method="POST">
+                {{ form.hidden_tag() }}
+                
+                {% for field in form %}
+                    {% if field.type != 'CSRFToken' and field.type != 'SubmitField' %}
+                        {{ wtf.form_field(field) }}
+                    {% endif %}
+                {% endfor %}
+
+                {{ wtf.form_field(form.submit, class='btn btn-primary') }}
+            </form>
             
         </div>
     </div>

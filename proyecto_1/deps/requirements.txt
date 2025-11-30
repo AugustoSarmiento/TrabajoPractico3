@@ -12,3 +12,4 @@ flask-bootstrap
 flask-login
 email_validator
 coverage
+matplotlib

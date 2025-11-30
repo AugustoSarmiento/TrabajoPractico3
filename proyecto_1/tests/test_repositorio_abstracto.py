@@ -1,3 +1,7 @@
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning) 
+warnings.filterwarnings("ignore", category=ResourceWarning) 
+warnings.filterwarnings("ignore", category=UserWarning)
 import unittest
 from modules.repositorio_abstracto import IRepositorio
 from abc import ABC, abstractmethod # Reimportamos ABC solo para claridad

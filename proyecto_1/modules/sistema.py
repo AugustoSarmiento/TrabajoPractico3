@@ -67,6 +67,9 @@ class SubsistemaGestionReclamos:
 
         return nuevo_reclamo
     
+    def obtener_lista_departamentos(self) -> List[str]:
+        return ["secretaría técnica", "soporte informático", "maestranza"]
+    
     def buscar_reclamo_por_id(self, id_reclamo: int) -> Reclamo:
         """Busca un reclamo por su ID usando el repositorio."""
         reclamo_encontrado = self.__repo_reclamos.obtener_por_id(id_reclamo)

@@ -10,17 +10,6 @@
     {% endif %}
     <hr>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="alert alert-{{ category if category else 'info' }} alert-dismissible fade show" role="alert">
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
-
     <div class="table-responsive">
         <table class="table table-striped table-hover">
             <thead class="table-dark">
@@ -60,9 +49,11 @@
                         <td>{{ reclamo.numero_adherentes }}</td>
 
                         <td>
-                            <a href="{{ url_for('editar_estado', id_reclamo=reclamo.id_reclamo) }}" class="btn btn-primary btn-sm">Editar Estado</a>
-
-                            {% if usuario.rol == 'secretario' and reclamo.departamento != 'secretaría técnica' %}
+                            {% if usuario.rol == 'jefe' %}
+                                <a href="{{ url_for('editar_estado', id_reclamo=reclamo.id_reclamo) }}" class="btn btn-primary btn-sm">Editar Estado</a>
+                            {% endif %}
+                            
+                            {% if usuario.rol == 'secretario' %}
                                 <a href="{{ url_for('derivar_reclamo', id_reclamo=reclamo.id_reclamo) }}" class="btn btn-warning btn-sm">Derivar</a>
                             {% endif %}
                         </td>

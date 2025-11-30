@@ -1,6 +1,12 @@
 # modules/config.py
 import os
 from flask import Flask
+
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", category=ResourceWarning)
+
+
 from flask_session import Session
 from flask_login import LoginManager
 from flask_bootstrap import Bootstrap

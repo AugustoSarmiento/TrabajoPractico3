@@ -1,3 +1,8 @@
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", category=ResourceWarning)
+warnings.filterwarnings("ignore", category=UserWarning)
+
 import unittest
 from unittest.mock import MagicMock, patch
 from modules.repositorio_concreto import RepositorioUsuariosSQLAlchemy, RepositorioReclamosSQLAlchemy
@@ -5,6 +10,7 @@ from modules.usuario import Usuario
 from modules.reclamo import Reclamo
 from modules.roles import JefeDepartamento, SecretarioTecnico
 from modules.modelos_db import ModeloUsuario, ModeloReclamo, Base
+from modules.config_db import engine
 import datetime
 from typing import Optional, List 
 
@@ -137,6 +143,12 @@ class TestRepositorioUsuariosSQLAlchemy(unittest.TestCase):
         mock_append.assert_called_once_with(mock_reclamo)
         self.mock_session.commit.assert_called_once()
 
+    @classmethod
+    def tearDownClass(cls):
+        """Cierra el pool de conexiones de la base de datos global."""
+        if engine:
+            engine.dispose()
+
 
 class TestRepositorioReclamosSQLAlchemy(unittest.TestCase):
     
@@ -211,3 +223,7 @@ class TestRepositorioReclamosSQLAlchemy(unittest.TestCase):
         self.mock_query.get.return_value = None
         with self.assertRaisesRegex(ValueError, "Reclamo no encontrado para eliminar"):
             self.repo.eliminar(99)
+
+    @classmethod
+    def tearDownClass(cls):
+        return super().tearDownClass()

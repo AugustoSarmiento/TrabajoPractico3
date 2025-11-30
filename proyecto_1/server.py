@@ -1,3 +1,4 @@
+
 from modules.factoria import crear_repositorio_usuarios, crear_repositorio_reclamos
 from modules.sistema import SubsistemaGestionReclamos
 from modules.inicializacion import DATOS_PERSONAL # Datos para inicializar personal
@@ -13,13 +14,13 @@ from modules.estadisticas import GeneradorEstadisticas
 from flask import send_from_directory
 from modules.generador_reportes import GeneradorReportes, ReporteHTML, ReportePDF
 import os
-
+import datetime
 
 repo_usuarios = crear_repositorio_usuarios()
 repo_reclamos = crear_repositorio_reclamos()
 sistema = SubsistemaGestionReclamos(repo_usuarios, repo_reclamos)
 
-print("Creando gestor de login...")
+#print("Creando gestor de login...")
 gestor_login = GestorDeLogin(login_manager, repo_usuarios)
 
 @app.context_processor
@@ -30,42 +31,46 @@ def inject_gestor_login():
     """
     return dict(gestor_login=gestor_login)
 
-# --- Inicialización del personal (SIN HASHING) ---
-print("Inicializando personal...")
-for datos_persona in DATOS_PERSONAL:
-    try:
-        usuario_existente = repo_usuarios.obtener_por_filtro(nombre_usuario=datos_persona["nombre_usuario"])
-        if usuario_existente:
-            print(f"Usuario '{datos_persona['nombre_usuario']}' ya existe, omitiendo creación inicial.")
-            continue
+def inicializar_personal():
+    """
+    Función que contiene la lógica de inicialización y los logs, 
+    para ser llamada solo al ejecutar server.py directamente.
+    """
+    print("Inicializando personal...")
+    for datos_persona in DATOS_PERSONAL:
+        try:
+            usuario_existente = repo_usuarios.obtener_por_filtro(nombre_usuario=datos_persona["nombre_usuario"])
+            if usuario_existente:
+                print(f"Usuario '{datos_persona['nombre_usuario']}' ya existe, omitiendo creación inicial.")
+                continue
 
-        if datos_persona["rol"] == "jefe":
-            nuevo_personal = JefeDepartamento(
-                nombre=datos_persona["nombre"], apellido=datos_persona["apellido"], email=datos_persona["email"],
-                nombre_usuario=datos_persona["nombre_usuario"],
-                contrasena=datos_persona["contrasena"], # Contraseña en texto plano
-                departamento_asignado=datos_persona["departamento_asignado"]
-            )
-        elif datos_persona["rol"] == "secretario":
-            nuevo_personal = SecretarioTecnico(
-                nombre=datos_persona["nombre"], apellido=datos_persona["apellido"], email=datos_persona["email"],
-                nombre_usuario=datos_persona["nombre_usuario"],
-                contrasena=datos_persona["contrasena"] # Contraseña en texto plano
-            )
-        else:
-            continue
+            if datos_persona["rol"] == "jefe":
+                nuevo_personal = JefeDepartamento(
+                    nombre=datos_persona["nombre"], apellido=datos_persona["apellido"], email=datos_persona["email"],
+                    nombre_usuario=datos_persona["nombre_usuario"],
+                    contrasena=datos_persona["contrasena"], # Contraseña en texto plano
+                    departamento_asignado=datos_persona["departamento_asignado"]
+                )
+            elif datos_persona["rol"] == "secretario":
+                nuevo_personal = SecretarioTecnico(
+                    nombre=datos_persona["nombre"], apellido=datos_persona["apellido"], email=datos_persona["email"],
+                    nombre_usuario=datos_persona["nombre_usuario"],
+                    contrasena=datos_persona["contrasena"] # Contraseña en texto plano
+                )
+            else:
+                continue
 
-        repo_usuarios.guardar(nuevo_personal)
-        print(f"Usuario '{nuevo_personal.nombre_usuario}' ({datos_persona['rol']}) creado.")
+            repo_usuarios.guardar(nuevo_personal)
+            print(f"Usuario '{nuevo_personal.nombre_usuario}' ({datos_persona['rol']}) creado.")
 
-    except KeyError as e:
-        print(f"Error al inicializar personal: falta la clave {e} en los datos.")
-    except UsuarioExistenteError as e:
-         print(f"Error al guardar personal: {e}")
-    except Exception as e:
-         print(f"Error inesperado al inicializar personal '{datos_persona.get('nombre_usuario', 'Desconocido')}': {e}")
+        except KeyError as e:
+            print(f"Error al inicializar personal: falta la clave {e} en los datos.")
+        except UsuarioExistenteError as e:
+             print(f"Error al guardar personal: {e}")
+        except Exception as e:
+             print(f"Error inesperado al inicializar personal '{datos_persona.get('nombre_usuario', 'Desconocido')}': {e}")
 
-print("Inicialización de personal completada.")
+    print("Inicialización de personal completada.")
 
 
 @app.route("/")
@@ -345,7 +350,7 @@ def manejar_reclamos():
 
 @app.route("/editar_estado/<int:id_reclamo>", methods=["GET", "POST"])
 @gestor_login.se_requiere_login
-@gestor_login.rol_requerido(roles_permitidos=['jefe', 'secretario'])
+@gestor_login.rol_requerido(roles_permitidos=['jefe'])
 def editar_estado(id_reclamo):
     """
     Ruta para mostrar y procesar el formulario de edición de estado de un reclamo.
@@ -407,7 +412,6 @@ def derivar_reclamo(id_reclamo):
     """
     Ruta para mostrar y procesar el formulario de derivación de un reclamo.
     Solo accesible por Secretaría Técnica.
-
     """
     try:
         # Buscamos el reclamo por su ID
@@ -416,16 +420,34 @@ def derivar_reclamo(id_reclamo):
         flash(f"Error: {e}", "danger")
         return redirect(url_for('manejar_reclamos'))
 
+    # 1. Instanciar el formulario
     form = FormDerivarReclamo()
+    
+    # 2. Definir la lista de departamentos válidos para derivar (excluyendo Secretaría Técnica)
+    # Solución simple: Solo incluimos los destinos de trabajo.
+    DEP_SECRETARIA_TECNICA = 'secretaría técnica'
+    
+    # Lista de todos los departamentos (tomada de la lógica de validación de sistema.py)
+    todos_los_departamentos = ["secretaría técnica", "soporte informático", "maestranza"]
+    
+    # Lista filtrada (solo Soporte y Maestranza)
+    lista_deps_filtrada = [dep for dep in todos_los_departamentos if dep != DEP_SECRETARIA_TECNICA]
+    
+    # Crear las opciones para el SelectField (valor, texto visible)
+    choices = [(dep, dep.title()) for dep in lista_deps_filtrada]
 
+    # 3. FORZAR LA ACTUALIZACIÓN DE LAS OPCIONES DEL CAMPO
+    # ESTA ES LA CLAVE PARA QUE NO APAREZCA 'secretaría técnica'
+    form.departamento.choices = choices 
+    
+    # --- Lógica de POST (validate_on_submit) ---
     if form.validate_on_submit():
-        # Si el formulario se envió (POST) y es válido
         try:
             nuevo_depto = form.departamento.data
 
             # Verificamos que no lo esté derivando al mismo departamento
             if reclamo.departamento == nuevo_depto:
-                flash(f"El reclamo ya pertenece al departamento '{nuevo_depto}'. No se realizaron cambios.", "info")
+                flash(f"El reclamo ya pertenece al departamento '{nuevo_depto.title()}'. No se realizaron cambios.", "info")
             else:
                 # Llamamos al método del sistema que ya creamos
                 sistema.derivar_reclamo(
@@ -433,7 +455,7 @@ def derivar_reclamo(id_reclamo):
                     id_reclamo=id_reclamo,
                     nuevo_departamento=nuevo_depto
                 )
-                flash(f"Reclamo #{id_reclamo} derivado exitosamente a '{nuevo_depto}'.", "success")
+                flash(f"Reclamo #{id_reclamo} derivado exitosamente a '{nuevo_depto.title()}'.", "success")
 
             return redirect(url_for('manejar_reclamos'))
 
@@ -441,9 +463,10 @@ def derivar_reclamo(id_reclamo):
             flash(f"Error al derivar el reclamo: {e}", "danger")
 
     # Si es un GET (primera vez que carga la página)
-    # Seteamos el valor actual del departamento en el formulario
-    form.departamento.data = reclamo.departamento
-
+    # Seteamos el valor actual del departamento en el formulario (opcional)
+    if not form.departamento.data:
+        form.departamento.data = reclamo.departamento
+        
     return render_template("derivar_reclamo.html", reclamo=reclamo, form=form)
 
 @app.route("/analitica")
@@ -452,27 +475,25 @@ def derivar_reclamo(id_reclamo):
 def analitica():
     """
     Ruta para la Opción 2 del Admin: "Analítica".
-    Muestra estadísticas sobre los reclamos.
-
+    Muestra estadísticas sobre los reclamos y genera el gráfico.
     """
     usuario_actual = gestor_login.usuario_actual
     reclamos_a_procesar = []
     departamento_titulo = ""
+    ruta_web_grafico_final = None # Inicializamos la ruta del gráfico
 
     try:
-        # Filtramos los reclamos según el rol
+        # Filtramos los reclamos según el rol (código existente)
         if usuario_actual.rol == 'jefe':
             departamento_titulo = usuario_actual.departamento.title()
-            # Un Jefe solo ve estadísticas de su departamento
             reclamos_a_procesar = repo_reclamos.obtener_todos_por_filtro(
                 departamento=usuario_actual.departamento
             )
         elif usuario_actual.rol == 'secretario':
             departamento_titulo = "Todos los Departamentos"
-            # El Secretario Técnico ve las estadísticas de todos los reclamos
             reclamos_a_procesar = repo_reclamos.obtener_todos()
 
-        # Si no hay reclamos, creamos un generador vacío
+        # Si no hay reclamos, salimos pronto
         if not reclamos_a_procesar:
             return render_template("analitica.html", 
                                    departamento=departamento_titulo, 
@@ -480,19 +501,30 @@ def analitica():
                                    stats_mediana=0, 
                                    stats_palabras=[])
 
-        # Creamos la instancia del generador de estadísticas
+        # Calculamos las estadísticas (código existente)
         generador_stats = GeneradorEstadisticas(reclamos_a_procesar)
-
-        # Calculamos las estadísticas
         stats_porcentaje = generador_stats.calcular_porcentajes_estado()
         stats_mediana = generador_stats.calcular_mediana_tiempos_resolucion()
         stats_palabras = generador_stats.calcular_palabras_frecuentes(15) # Top 15
+
+        # --- NUEVO: GENERACIÓN DEL GRÁFICO PARA VISUALIZACIÓN EN LA WEB ---
+        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        nombre_archivo = f"grafico_estados_{usuario_actual.rol}_{timestamp}.png"
+        # Ruta de guardado físico (dentro de static para que Flask lo sirva)
+        ruta_guardado = os.path.join("static", "graficos", nombre_archivo)
+        
+        # La ruta que pasamos al template debe ser relativa a la carpeta 'static'
+        # Convertimos la ruta física a ruta web:
+        ruta_web_grafico_final = os.path.join("graficos", nombre_archivo).replace('\\', '/')
+        # --- FIN GENERACIÓN GRÁFICO ---
+
 
         return render_template("analitica.html",
                                departamento=departamento_titulo,
                                stats_porcentaje=stats_porcentaje,
                                stats_mediana=stats_mediana,
-                               stats_palabras=stats_palabras)
+                               stats_palabras=stats_palabras,
+                               ruta_grafico=ruta_web_grafico_final) # <-- NUEVO: RUTA DEL GRÁFICO
 
     except Exception as e:
         flash(f"Error al generar las estadísticas: {e}", "danger")
@@ -510,8 +542,8 @@ def generar_reporte(formato):
     usuario_actual = gestor_login.usuario_actual
     reclamos_a_procesar = []
     departamento_titulo = ""
-
-    # 1. Obtener los reclamos (igual que en /analitica)
+    
+    # 1. Obtener los reclamos y calcular estadísticas (código existente)
     if usuario_actual.rol == 'jefe':
         departamento_titulo = usuario_actual.departamento
         reclamos_a_procesar = repo_reclamos.obtener_todos_por_filtro(
@@ -521,8 +553,17 @@ def generar_reporte(formato):
         departamento_titulo = "Sistema Completo"
         reclamos_a_procesar = repo_reclamos.obtener_todos()
 
-    # 2. Calcular las estadísticas (igual que en /analitica)
-    stats_porcentaje = {"total": 0}  # 🔹 aseguramos que exista siempre
+    # 2. Calcular las estadísticas 
+    if usuario_actual.rol == 'jefe':
+        departamento_titulo = usuario_actual.departamento
+        reclamos_a_procesar = repo_reclamos.obtener_todos_por_filtro(
+            departamento=usuario_actual.departamento
+        )
+    elif usuario_actual.rol == 'secretario':
+        departamento_titulo = "Sistema Completo"
+        reclamos_a_procesar = repo_reclamos.obtener_todos()
+
+    stats_porcentaje = {"total": 0}
     stats_mediana = 0
 
     if reclamos_a_procesar:
@@ -534,6 +575,14 @@ def generar_reporte(formato):
         **stats_porcentaje,
         "mediana_tiempos": stats_mediana
     }
+
+    # --- GENERACIÓN DEL GRÁFICO PARA EL REPORTE ---
+    timestamp_reporte = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+    
+    # La ruta de guardado debe ser dentro de la carpeta 'reportes' para que sea accesible por el generador
+    nombre_archivo_grafico = f"grafico_estados_{usuario_actual.rol}_{timestamp_reporte}.png"
+    ruta_guardado_grafico = os.path.join("reportes", "graficos", nombre_archivo_grafico) 
+    
 
     # 3. Elegir la Estrategia de Reporte
     if formato.lower() == 'html':
@@ -549,10 +598,10 @@ def generar_reporte(formato):
     ruta_archivo_generado = generador.generar_reporte(
         lista_reclamos=reclamos_a_procesar,
         estadisticas=estadisticas_completas,
-        departamento=departamento_titulo
+        departamento=departamento_titulo,
     )
 
-    # 5. Ofrecer el archivo para descargar
+    # 5. Ofrecer el archivo para descargar 
     directorio = os.path.abspath("reportes")
     nombre_archivo = os.path.basename(ruta_archivo_generado)
 
@@ -576,6 +625,9 @@ def ayuda():
 
 # --- Punto de entrada para ejecutar la aplicación ---
 if __name__ == "__main__":
+    print("Creando gestor de login...")
+
+    inicializar_personal()
     # debug=True reinicia el servidor automáticamente con cada cambio
-    # host='0.0.0.0' permite que sea accesible desde tu red
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # host='0.0.0.0' permite que sea accesible desde la red local
+    app.run(debug=True, host='0.0.0.0', port=5000, use_reloader=False, threaded=False)

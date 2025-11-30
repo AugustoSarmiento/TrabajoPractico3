@@ -1,3 +1,7 @@
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning) 
+warnings.filterwarnings("ignore", category=ResourceWarning) 
+warnings.filterwarnings("ignore", category=UserWarning)
 import unittest
 import datetime
 from modules.reclamo import Reclamo
