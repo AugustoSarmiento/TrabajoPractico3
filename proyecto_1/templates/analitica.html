@@ -51,17 +51,25 @@
         <div class="row mt-4">
             <div class="col-12">
                 <h4>Palabras Clave más Frecuentes</h4>
-                <p class="text-muted">La consigna pide mostrar las palabras con mayor tamaño según su frecuencia. Esto se haría con una "nube de palabras" (Word Cloud).</p>
-                <ol class="list-group list-group-numbered">
-                    {% for palabra, frecuencia in stats_palabras %}
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            {{ palabra.title() }}
-                            <span class="badge bg-primary rounded-pill">{{ frecuencia }}</span>
-                        </li>
-                    {% else %}
-                        <li class="list-group-item">No se encontraron palabras clave.</li>
-                    {% endfor %}
-                </ol>
+                
+                {% if ruta_wordcloud %}
+                    <img src="{{ url_for('static', filename=ruta_wordcloud) }}" 
+                         alt="Nube de Palabras (Word Cloud) de Reclamos" 
+                         class="img-fluid mb-3" style="max-width: 800px; height: auto;">
+                    
+                {% else %}
+                    <p class="text-muted">No se pudo generar la Nube de Palabras. Mostrando palabras y frecuencias en formato de lista.</p>
+                    <ol class="list-group list-group-numbered">
+                        {% for palabra, frecuencia in stats_palabras %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                {{ palabra.title() }}
+                                <span class="badge bg-primary rounded-pill">{{ frecuencia }}</span>
+                            </li>
+                        {% else %}
+                            <li class="list-group-item">No se encontraron palabras clave.</li>
+                        {% endfor %}
+                    </ol>
+                {% endif %}
             </div>
         </div>
     {% endif %}

@@ -13,7 +13,7 @@ from modules.usuario import Usuario # Para el chequeo de contraseñas
 from modules.estadisticas import GeneradorEstadisticas
 from modules.graficador import Graficador
 from flask import send_from_directory
-from modules.generador_reportes import GeneradorReportes, ReporteHTML, ReportePDF
+from modules.generador_reportes import GeneradorReportes, ReporteHTML, ReportePDF, CARPETA_REPORTES
 import os
 import datetime
 
@@ -476,12 +476,13 @@ def derivar_reclamo(id_reclamo):
 def analitica():
     """
     Ruta para la Opción 2 del Admin: "Analítica".
-    Muestra estadísticas sobre los reclamos y genera el gráfico.
+    Muestra estadísticas sobre los reclamos y genera el gráfico y la nube de palabras.
     """
     usuario_actual = gestor_login.usuario_actual
     reclamos_a_procesar = []
     departamento_titulo = ""
-    ruta_web_grafico_final = None # Inicializamos la ruta del gráfico
+    ruta_web_grafico_final = None 
+    ruta_web_wordcloud_final = None # <-- NUEVA RUTA PARA WORDCLOUD
 
     try:
         # Filtramos los reclamos según el rol (código existente)
@@ -502,25 +503,32 @@ def analitica():
                                    stats_mediana=0, 
                                    stats_palabras=[])
 
-        # Calculamos las estadísticas (código existente)
+        # Calculamos las estadísticas
         generador_stats = GeneradorEstadisticas(reclamos_a_procesar)
         stats_porcentaje = generador_stats.calcular_porcentajes_estado()
         stats_mediana = generador_stats.calcular_mediana_tiempos_resolucion()
-        stats_palabras = generador_stats.calcular_palabras_frecuentes(15) # Top 15
-
-        # --- NUEVO: GENERACIÓN DEL GRÁFICO PARA VISUALIZACIÓN EN LA WEB ---
+        stats_palabras = generador_stats.calcular_palabras_frecuentes(50) # Top 50 para mejor nube
+        
+        # ----------------------------------------------------
+        # --- GENERACIÓN DEL GRÁFICO CIRCULAR (EXISTENTE) ---
+        # ----------------------------------------------------
         timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-        nombre_archivo = f"grafico_estados_{usuario_actual.rol}_{timestamp}.png"
-        # Ruta de guardado físico (dentro de static para que Flask lo sirva)
-        ruta_guardado = os.path.join("static", "graficos", nombre_archivo)
+        nombre_archivo_grafico = f"grafico_estados_{usuario_actual.rol}_{timestamp}.png"
+        ruta_guardado_grafico = os.path.join("static", "graficos", nombre_archivo_grafico)
         
-        # Generar el gráfico y guardarlo en la ruta física:
-        Graficador.generar_grafico_estados(stats_porcentaje, ruta_guardado)
+        if Graficador.generar_grafico_estados(stats_porcentaje, ruta_guardado_grafico):
+            ruta_web_grafico_final = os.path.join("graficos", nombre_archivo_grafico).replace('\\', '/')
         
-        # La ruta que pasamos al template debe ser relativa a la carpeta 'static'
-        # Convertimos la ruta física a ruta web:
-        ruta_web_grafico_final = os.path.join("graficos", nombre_archivo).replace('\\', '/')
-        # --- FIN GENERACIÓN GRÁFICO ---
+        # --------------------------------------------------------
+        # --- NUEVO: GENERACIÓN DE LA NUBE DE PALABRAS (WORD CLOUD) ---
+        # --------------------------------------------------------
+        nombre_archivo_wordcloud = f"wordcloud_{usuario_actual.rol}_{timestamp}.png"
+        ruta_guardado_wordcloud = os.path.join("static", "graficos", nombre_archivo_wordcloud)
+        
+        if stats_palabras and Graficador.generar_wordcloud(stats_palabras, ruta_guardado_wordcloud):
+            # La ruta que pasamos al template debe ser relativa a la carpeta 'static'
+            ruta_web_wordcloud_final = os.path.join("graficos", nombre_archivo_wordcloud).replace('\\', '/')
+        # --------------------------------------------------------
 
 
         return render_template("analitica.html",
@@ -528,7 +536,8 @@ def analitica():
                                stats_porcentaje=stats_porcentaje,
                                stats_mediana=stats_mediana,
                                stats_palabras=stats_palabras,
-                               ruta_grafico=ruta_web_grafico_final) # <-- PASAMOS LA RUTA DEL GRÁFICO
+                               ruta_grafico=ruta_web_grafico_final,
+                               ruta_wordcloud=ruta_web_wordcloud_final) # <-- NUEVO PARÁMETRO
 
     except Exception as e:
         flash(f"Error al generar las estadísticas: {e}", "danger")
@@ -547,7 +556,7 @@ def generar_reporte(formato):
     reclamos_a_procesar = []
     departamento_titulo = ""
     
-    # 1. Obtener los reclamos y calcular estadísticas (código existente)
+    # 1. Obtener los reclamos y calcular estadísticas
     if usuario_actual.rol == 'jefe':
         departamento_titulo = usuario_actual.departamento
         reclamos_a_procesar = repo_reclamos.obtener_todos_por_filtro(
@@ -558,15 +567,6 @@ def generar_reporte(formato):
         reclamos_a_procesar = repo_reclamos.obtener_todos()
 
     # 2. Calcular las estadísticas 
-    if usuario_actual.rol == 'jefe':
-        departamento_titulo = usuario_actual.departamento
-        reclamos_a_procesar = repo_reclamos.obtener_todos_por_filtro(
-            departamento=usuario_actual.departamento
-        )
-    elif usuario_actual.rol == 'secretario':
-        departamento_titulo = "Sistema Completo"
-        reclamos_a_procesar = repo_reclamos.obtener_todos()
-
     stats_porcentaje = {"total": 0}
     stats_mediana = 0
 
@@ -580,32 +580,51 @@ def generar_reporte(formato):
         "mediana_tiempos": stats_mediana
     }
 
-    # --- GENERACIÓN DEL GRÁFICO PARA EL REPORTE ---
-    timestamp_reporte = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+    # --- 3. GENERACIÓN Y ASIGNACIÓN DEL GRÁFICO PARA EL REPORTE ---
+    ruta_relativa_grafico = None 
     
-    # La ruta de guardado debe ser dentro de la carpeta 'reportes/graficos'
-    nombre_archivo_grafico = f"grafico_estados_{usuario_actual.rol}_{timestamp_reporte}.png"
-    ruta_guardado_grafico = os.path.join("reportes", "graficos", nombre_archivo_grafico) 
-    
-    # Generar el gráfico y guardarlo en la ruta física: <--- NUEVO
-    Graficador.generar_grafico_estados(stats_porcentaje, ruta_guardado_grafico)
-    
-    # Pasamos la ruta relativa (ej. 'graficos/nombre.png') para que los generadores la usen
-    ruta_relativa_grafico = os.path.join("graficos", nombre_archivo_grafico).replace('\\', '/')
-    estadisticas_completas["ruta_grafico"] = ruta_relativa_grafico # <-- AÑADIR AL DICCIONARIO
-    # --- FIN GENERACIÓN GRÁFICO REPORTE ---
+    if estadisticas_completas.get('total', 0) > 0:
+        
+        # Las líneas que garantizan la carpeta (asumiendo importación de CARPETA_REPORTES)
+        CARPETA_GRAFICOS_REPORTES = os.path.join(CARPETA_REPORTES, "graficos")
+        os.makedirs(CARPETA_GRAFICOS_REPORTES, exist_ok=True)
+        
+        timestamp_reporte = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        nombre_archivo_grafico = f"grafico_estados_{usuario_actual.rol}_{timestamp_reporte}.png"
+        ruta_guardado_grafico = os.path.join(CARPETA_GRAFICOS_REPORTES, nombre_archivo_grafico) 
+        
+        try:
+            # Intentamos generar el gráfico y capturamos su ruta de retorno (o None)
+            ruta_retorno = Graficador.generar_grafico_estados(stats_porcentaje, ruta_guardado_grafico)
+            
+            if ruta_retorno is not None:
+                # Si se generó, asignamos la ruta relativa
+                ruta_relativa_grafico = os.path.join("graficos", nombre_archivo_grafico).replace('\\', '/')
+                print(f"DIAGNÓSTICO: Gráfico guardado con éxito en: {ruta_guardado_grafico}")
+            else:
+                print("DIAGNÓSTICO: Graficador retornó None (posiblemente porque no había datos > 0).")
+
+        except Exception as e:
+            # Si hay un error de Matplotlib o permisos, lo imprimimos
+            print(f"ERROR CRÍTICO AL GENERAR EL GRÁFICO: {e}")
+            ruta_relativa_grafico = None # Aseguramos que no se pase una ruta inválida
+
+    # Asignamos la ruta (será la ruta relativa o None)
+    estadisticas_completas["ruta_grafico"] = ruta_relativa_grafico
     
 
-    # 3. Elegir la Estrategia de Reporte
+    # 4. Elegir la Estrategia de Reporte
     if formato.lower() == 'html':
         estrategia = ReporteHTML()
+        mimetype = 'text/html'
     elif formato.lower() == 'pdf':
         estrategia = ReportePDF()
+        mimetype = 'application/pdf'
     else:
         flash("Formato de reporte no válido.", "danger")
         return redirect(url_for('panel_principal'))
 
-    # 4. Generar el reporte
+    # 5. Generar el reporte
     generador = GeneradorReportes(estrategia)
     ruta_archivo_generado = generador.generar_reporte(
         lista_reclamos=reclamos_a_procesar,
@@ -613,14 +632,15 @@ def generar_reporte(formato):
         departamento=departamento_titulo,
     )
 
-    # 5. Ofrecer el archivo para descargar 
+    # 6. Ofrecer el archivo para descargar 
     directorio = os.path.abspath("reportes")
     nombre_archivo = os.path.basename(ruta_archivo_generado)
 
     return send_from_directory(
         directory=directorio,
         path=nombre_archivo,
-        as_attachment=True
+        as_attachment=True,
+        mimetype=mimetype # Aseguramos el mimetype correcto para la descarga
     )
 
 @app.route("/ayuda")

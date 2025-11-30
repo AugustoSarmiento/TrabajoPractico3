@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import os
-import io # Para manejar imágenes en memoria si fuera necesario, pero lo guardaremos en disco
+import io 
+from wordcloud import WordCloud # <<--- NUEVA IMPORTACIÓN
 
 class Graficador:
     
@@ -27,8 +28,6 @@ class Graficador:
         data = [(labels[i], sizes[i], colors[i], explode[i]) for i in range(len(sizes)) if sizes[i] > 0]
         
         if not data:
-            # No hay datos para graficar, se puede generar una imagen de placeholder o simplemente no guardar nada.
-            # Por simplicidad, retornamos si el total es 0.
             if stats_porcentaje.get('total', 0) == 0:
                 return
 
@@ -58,12 +57,51 @@ class Graficador:
         ax1.axis('equal')  
 
         # 4. Guardar la figura
-        # Guardar como PNG en la ruta especificada
         try:
             plt.savefig(ruta_guardado_completa, bbox_inches='tight', dpi=100)
+            return ruta_guardado_completa # Devolvemos la ruta en caso de éxito
         except Exception as e:
-            print(f"Error al guardar gráfico: {e}")
+            print(f"Error al guardar gráfico de estados: {e}")
+            return None
         finally:
             plt.close(fig1) # Cerrar la figura para liberar memoria
-        
-        return ruta_guardado_completa
+    
+    @staticmethod
+    def generar_wordcloud(stats_palabras: list[tuple[str, int]], ruta_guardado_completa: str):
+        """
+        Genera una nube de palabras a partir de las frecuencias y la guarda.
+        stats_palabras es una lista de tuplas (palabra, frecuencia).
+        """
+        if not stats_palabras:
+            return None
+
+        # Convertir la lista de tuplas a un diccionario de frecuencias
+        frecuencias = dict(stats_palabras) # WordCloud puede generar a partir de frecuencias
+
+        # 1. Crear carpetas si no existen
+        os.makedirs(os.path.dirname(ruta_guardado_completa), exist_ok=True)
+
+        # 2. Configurar y generar la nube de palabras
+        wordcloud = WordCloud(
+            width=800, 
+            height=400, 
+            background_color='white', 
+            collocations=False, # Evitar agrupar palabras (opcional)
+            colormap='viridis',  # Colores más amigables (ej: viridis, cool, tab10)
+            max_words=100 
+        ).generate_from_frequencies(frecuencias) # Se genera directamente desde el diccionario de frecuencias
+
+        # 3. Visualizar y guardar la imagen (usando Matplotlib)
+        plt.figure(figsize=(8, 4), facecolor=None)
+        plt.imshow(wordcloud, interpolation='bilinear') # Mostrar la nube generada
+        plt.axis("off") # Ocultar ejes
+        plt.tight_layout(pad=0)
+
+        try:
+            plt.savefig(ruta_guardado_completa, dpi=100)
+            return ruta_guardado_completa # Devolvemos la ruta en caso de éxito
+        except Exception as e:
+            print(f"Error al guardar Word Cloud: {e}")
+            return None
+        finally:
+            plt.close() # Cerrar la figura
