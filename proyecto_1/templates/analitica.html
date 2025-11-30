@@ -11,21 +11,29 @@
         <div class="row">
             <div class="col-md-6">
                 <h4>Estado de Reclamos (Total: {{ stats_porcentaje.total }})</h4>
-                <ul class="list-group">
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        Pendientes
-                        <span class="badge bg-warning text-dark rounded-pill">{{ stats_porcentaje.pendientes | round(2) }}%</span>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        En Proceso
-                        <span class="badge bg-info text-dark rounded-pill">{{ stats_porcentaje.en_proceso | round(2) }}%</span>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        Resueltos
-                        <span class="badge bg-success rounded-pill">{{ stats_porcentaje.resueltos | round(2) }}%</span>
-                    </li>
-                </ul>
-                <small class="text-muted">La consigna pide un diagrama circular, que se implementaría con una biblioteca de gráficos JavaScript (ej. Chart.js).</small>
+                
+                {% if ruta_grafico %}
+                    <img src="{{ url_for('static', filename=ruta_grafico) }}" 
+                         alt="Diagrama Circular de Estados de Reclamos" 
+                         class="img-fluid mb-3">
+                {% else %}
+                    <ul class="list-group">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Pendientes
+                            <span class="badge bg-warning text-dark rounded-pill">{{ stats_porcentaje.pendientes | round(2) }}%</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            En Proceso
+                            <span class="badge bg-info text-dark rounded-pill">{{ stats_porcentaje.en_proceso | round(2) }}%</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Resueltos
+                            <span class="badge bg-success rounded-pill">{{ stats_porcentaje.resueltos | round(2) }}%</span>
+                        </li>
+                    </ul>
+                    <div class="alert alert-warning mt-2">No se pudo generar el diagrama circular. Mostrando porcentajes en formato de lista.</div>
+                {% endif %}
+                
             </div>
 
             <div class="col-md-6">

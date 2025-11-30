@@ -80,6 +80,7 @@ class ReporteHTML(ReporteEstrategiaAbstracta):
             body { font-family: sans-serif; margin: 20px; }
             h1 { color: #333; }
             h2 { color: #555; border-bottom: 1px solid #ccc; padding-bottom: 5px;}
+            h3 { color: #555; }
             ul { background-color: #f4f4f4; border: 1px solid #ddd; padding: 15px; }
             table { width: 100%; border-collapse: collapse; margin-top: 20px; }
             th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
@@ -97,9 +98,15 @@ class ReporteHTML(ReporteEstrategiaAbstracta):
         html += f"<li><b>En Proceso:</b> {estadisticas.get('en_proceso', 0):.2f}%</li>"
         html += f"<li><b>Resueltos:</b> {estadisticas.get('resueltos', 0):.2f}%</li>"
         html += f"<li><b>Mediana Tiempos Resolución:</b> {estadisticas.get('mediana_tiempos', 0)} días</li>"
-        # (Aquí podríamos añadir el gráfico de palabras clave si lo pasamos a 'estadisticas')
         html += "</ul>"
 
+        # --- NUEVO: Gráfico Circular en HTML ---
+        ruta_grafico = estadisticas.get("ruta_grafico", None)
+        if ruta_grafico:
+            html += "<h3>Distribución de Estados</h3>"
+            # La ruta es relativa desde el archivo HTML ('reportes/') al gráfico ('reportes/graficos/')
+            html += f'<img src="{ruta_grafico}" alt="Diagrama Circular de Estados" style="max-width: 500px; height: auto;">'
+        
         # --- Sección de Lista de Reclamos ---
         html += "<h2>Detalle de Reclamos</h2>"
         html += "<table>"
@@ -161,16 +168,37 @@ class ReportePDF(ReporteEstrategiaAbstracta):
         alto_celda = 6
         
         stats_texto = f"""
-        - Total de Reclamos: {estadisticas.get('total', 0)}
-        - Pendientes: {estadisticas.get('pendientes', 0):.2f}%
-        - En Proceso: {estadisticas.get('en_proceso', 0):.2f}%
-        - Resueltos: {estadisticas.get('resueltos', 0):.2f}%
-        - Mediana Tiempos Resolucion: {estadisticas.get('mediana_tiempos', 0)} dias
-        """
+- Total de Reclamos: {estadisticas.get('total', 0)}
+- Pendientes: {estadisticas.get('pendientes', 0):.2f}%
+- En Proceso: {estadisticas.get('en_proceso', 0):.2f}%
+- Resueltos: {estadisticas.get('resueltos', 0):.2f}%
+- Mediana Tiempos Resolucion: {estadisticas.get('mediana_tiempos', 0)} dias
+"""
         # Usamos multi_cell para texto que puede ser largo
         pdf.multi_cell(ancho_celda, alto_celda, stats_texto, border=1)
         pdf.ln(5)
 
+        # --- NUEVO: Gráfico Circular en PDF ---
+        ruta_grafico_relativa = estadisticas.get("ruta_grafico", None)
+        if ruta_grafico_relativa:
+            # Necesitamos la ruta ABSOLUTA/completa para fpdf.
+            ruta_absoluta_grafico = os.path.abspath(os.path.join(CARPETA_REPORTES, ruta_grafico_relativa))
+            
+            pdf.set_font("Helvetica", 'B', 12)
+            pdf.cell(0, 10, "Distribución de Estados", ln=True)
+            
+            # Insertar la imagen (x=55 centra la imagen de 100mm en una página A4 de 190mm de ancho útil)
+            if os.path.exists(ruta_absoluta_grafico):
+                 # Añadimos un chequeo de existencia por seguridad
+                 pdf.image(ruta_absoluta_grafico, x=55, w=100) 
+            else:
+                 pdf.set_text_color(255, 0, 0)
+                 pdf.cell(0, 10, f"ERROR: Gráfico no encontrado en: {ruta_absoluta_grafico}", ln=True)
+                 pdf.set_text_color(0, 0, 0) # Volver al color original
+
+            pdf.ln(5)
+        # --- FIN Gráfico Circular en PDF ---
+        
         # --- Detalle de Reclamos ---
         pdf.set_font("Helvetica", 'B', 12)
         pdf.cell(0, 10, "Detalle de Reclamos", ln=True)

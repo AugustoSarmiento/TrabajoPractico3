@@ -11,6 +11,7 @@ from modules.gestor_login import GestorDeLogin # Importamos el gestor
 from modules.excepciones import UsuarioInexistenteError, UsuarioExistenteError
 from modules.usuario import Usuario # Para el chequeo de contraseñas
 from modules.estadisticas import GeneradorEstadisticas
+from modules.graficador import Graficador
 from flask import send_from_directory
 from modules.generador_reportes import GeneradorReportes, ReporteHTML, ReportePDF
 import os
@@ -513,6 +514,9 @@ def analitica():
         # Ruta de guardado físico (dentro de static para que Flask lo sirva)
         ruta_guardado = os.path.join("static", "graficos", nombre_archivo)
         
+        # Generar el gráfico y guardarlo en la ruta física:
+        Graficador.generar_grafico_estados(stats_porcentaje, ruta_guardado)
+        
         # La ruta que pasamos al template debe ser relativa a la carpeta 'static'
         # Convertimos la ruta física a ruta web:
         ruta_web_grafico_final = os.path.join("graficos", nombre_archivo).replace('\\', '/')
@@ -524,7 +528,7 @@ def analitica():
                                stats_porcentaje=stats_porcentaje,
                                stats_mediana=stats_mediana,
                                stats_palabras=stats_palabras,
-                               ruta_grafico=ruta_web_grafico_final) # <-- NUEVO: RUTA DEL GRÁFICO
+                               ruta_grafico=ruta_web_grafico_final) # <-- PASAMOS LA RUTA DEL GRÁFICO
 
     except Exception as e:
         flash(f"Error al generar las estadísticas: {e}", "danger")
@@ -579,9 +583,17 @@ def generar_reporte(formato):
     # --- GENERACIÓN DEL GRÁFICO PARA EL REPORTE ---
     timestamp_reporte = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
     
-    # La ruta de guardado debe ser dentro de la carpeta 'reportes' para que sea accesible por el generador
+    # La ruta de guardado debe ser dentro de la carpeta 'reportes/graficos'
     nombre_archivo_grafico = f"grafico_estados_{usuario_actual.rol}_{timestamp_reporte}.png"
     ruta_guardado_grafico = os.path.join("reportes", "graficos", nombre_archivo_grafico) 
+    
+    # Generar el gráfico y guardarlo en la ruta física: <--- NUEVO
+    Graficador.generar_grafico_estados(stats_porcentaje, ruta_guardado_grafico)
+    
+    # Pasamos la ruta relativa (ej. 'graficos/nombre.png') para que los generadores la usen
+    ruta_relativa_grafico = os.path.join("graficos", nombre_archivo_grafico).replace('\\', '/')
+    estadisticas_completas["ruta_grafico"] = ruta_relativa_grafico # <-- AÑADIR AL DICCIONARIO
+    # --- FIN GENERACIÓN GRÁFICO REPORTE ---
     
 
     # 3. Elegir la Estrategia de Reporte
